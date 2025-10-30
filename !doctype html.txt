@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>نموذج تسجيل فيديو احترافي</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#0f1724;color:#e6eef6;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;padding:20px}
+    .card{background:#0b1220;padding:24px;border-radius:12px;max-width:900px;width:100%}
+    h1{margin-top:0;color:#06b6d4}
+    video{width:100%;height:360px;background:#000;border-radius:8px;object-fit:cover}
+    .controls{margin-top:12px;display:flex;gap:8px}
+    button{padding:10px 12px;border:none;border-radius:8px;background:#06b6d4;color:#052026;font-weight:600;cursor:pointer}
+    input,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#fff;margin-top:8px}
+    label{color:#94a3b8;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>نموذج تسجيل فيديو احترافي</h1>
+    <p>قدّم نفسك باختصار (60 ثانية)</p>
+    <video id="preview" playsinline muted></video>
+    <div class="controls">
+      <button id="startBtn">ابدأ التسجيل</button>
+      <button id="stopBtn" disabled>أوقف التسجيل</button>
+      <button id="playBtn" disabled>معاينة</button>
+      <button id="sendBtn" disabled>إرسال الإجابة</button>
+    </div>
+    <label for="name">الاسم الكامل</label>
+    <input id="name" type="text" placeholder="أدخل اسمك" />
+    <label for="email">البريد الإلكتروني</label>
+    <input id="email" type="email" placeholder="email@example.com" />
+    <label for="note">ملاحظات إضافية</label>
+    <textarea id="note" rows="4" placeholder="أكتب ملاحظة قصيرة..."></textarea>
+  </div>
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const playBtn = document.getElementById('playBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const preview = document.getElementById('preview');
+    let mediaStream=null, mediaRecorder=null, recordedBlobs=[], recordedFile=null;
+
+    async function initCamera(){
+      try{
+        mediaStream = await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720},audio:true});
+        preview.srcObject = mediaStream;
+        preview.play();
+      }catch(e){console.error(e);alert('فشل الوصول للكاميرا/الميكروفون')}
+    }
+
+    function startRecording(){
+      recordedBlobs=[];
+      mediaRecorder=new MediaRecorder(mediaStream,{mimeType:'video/webm;codecs=vp9'});
+      mediaRecorder.ondataavailable=e=>{if(e.data && e.data.size>0) recordedBlobs.push(e.data)};
+      mediaRecorder.onstop=()=>{
+        recordedFile=new Blob(recordedBlobs,{type:'video/webm'});
+        playBtn.disabled=false; sendBtn.disabled=false;
+      };
+      mediaRecorder.start();
+      startBtn.disabled=true; stopBtn.disabled=false;
+    }
+    function stopRecording(){if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop(); startBtn.disabled=false; stopBtn.disabled=true;}
+    function playRecording(){if(!recordedFile) return; preview.srcObject=null; preview.src=URL.createObjectURL(recordedFile); preview.controls=true; preview.play();}
+    async function sendToServer(){if(!recordedFile)return; alert('الرفع جاهز، ربط بالـ webhook لاحقاً');}
+
+    startBtn.addEventListener('click',startRecording);
+    stopBtn.addEventListener('click',stopRecording);
+    playBtn.addEventListener('click',playRecording);
+    sendBtn.addEventListener('click',sendToServer);
+    window.addEventListener('load',initCamera);
+  </script>
+</body>
+</html>
