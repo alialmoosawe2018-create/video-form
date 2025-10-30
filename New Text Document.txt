@@ -1,271 +1,89 @@
+<!--
+}
 
-<!doctype html>
-<html lang="ar">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>نموذج تسجيل فيديو احترافي</title>
-  <style>
-    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--white:#e6eef6}
-    html,body{height:100%}
-    body{font-family:Inter, system-ui, sans-serif;background:linear-gradient(180deg,#071021 0%,#071827 100%);color:var(--white);display:flex;align-items:center;justify-content:center;padding:32px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6);width:920px;max-width:100%;padding:24px}
-    .row{display:flex;gap:20px}
-    .left{flex:1}
-    .right{width:360px}
-    h1{margin:0 0 8px;font-size:20px}
-    p.lead{margin:0 0 18px;color:var(--muted)}
-    video#preview{width:100%;height:360px;background:#000;border-radius:8px;object-fit:cover}
-    .controls{display:flex;gap:8px;margin-top:12px}
-    button{background:var(--accent);border:none;color:#052026;padding:10px 12px;border-radius:8px;font-weight:600;cursor:pointer}
-    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--white)}
-    button.warn{background:#ef4444;color:white}
-    .meta{margin-top:12px;color:var(--muted);font-size:13px}
-    input[type=text], input[type=email], textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white);margin-top:8px}
-    label{font-size:13px;color:var(--muted)}
-    .progress{height:8px;background:rgba(255,255,255,0.04);border-radius:8px;margin-top:8px;overflow:hidden}
-    .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#7c3aed)}
-    .small{font-size:13px;color:var(--muted)}
-    .brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700}
-    footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:right}
-    .note{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;margin-top:10px;color:var(--muted)}
-  </style>
-</head>
 
-<body>
-  <div class="card" role="main">
-    <div class="brand">
-      <div class="logo">ش</div>
-      <div>
-        <div style="font-weight:700">نموذج تقديم - تسجيل فيديو</div>
-        <div class="small">سجل إجابتك بالفيديو ضمن هذا النموذج. يدعم HD ورفع مباشر إلى n8n.</div>
-      </div>
-    </div>
+async function reRecord(){
+// revoke preview url if any
+try{ if(preview.src && preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);}catch(e){}
+recordedBlobs = [];
+recordedFile = null;
+fileInfo.textContent = 'لا يوجد';
+playBtn.disabled = true;
+reRecordBtn.disabled = true;
+sendBtn.disabled = true;
+preview.srcObject = mediaStream;
+preview.controls = false;
+await preview.play();
+logStatus('أعد التسجيل عند الضغط ابدأ');
+}
 
-    <div class="row">
-      <div class="left">
-        <h1>السؤال الأول: قدّم نفسك باختصار (60 ثانية)</h1>
-        <p class="lead">من فضلك قدّم اسمك، خبراتك، ولماذا تريد هذه الوظيفة. حافظ على المدة أقل من 60 ثانية.</p>
 
-        <video id="preview" playsinline muted></video>
+// -------- Upload to n8n webhook --------
+async function sendToServer(){
+if(!recordedFile){ alert('لا يوجد تسجيل لإرساله'); return; }
+const name = document.getElementById('name').value || 'Anonymous';
+const email = document.getElementById('email').value || '';
+const note = document.getElementById('note').value || '';
 
-        <div class="controls">
-          <button id="startBtn">ابدأ التسجيل</button>
-          <button id="stopBtn" class="ghost" disabled>أوقف التسجيل</button>
-          <button id="playBtn" class="ghost" disabled>معاينة</button>
-          <button id="reRecordBtn" class="ghost" disabled>إعادة التسجيل</button>
-          <button id="sendBtn" class="" disabled>إرسال الإجابة</button>
-        </div>
 
-        <div class="meta" id="status">حالة: جاهز لتسجيل الفيديو. تأكد من سماح الكاميرا والميكروفون.</div>
+const formData = new FormData();
+formData.append('name', name);
+formData.append('email', email);
+formData.append('note', note);
+// attach file
+formData.append('file', recordedFile, `response_${Date.now()}.webm`);
 
-        <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
 
-        <div class="note">ملاحظة: التسجيل يتم محليًا أولًا، ثم يُرفع إلى الخادم عند الضغط على إرسال. إذا أردت تسجيل MP4 ستحتاج لتحويل الخادم (ffmpeg).</div>
-      </div>
+try{
+sendBtn.disabled = true;
+updateProgress(0);
+logStatus('جاري رفع الملف...');
 
-      <div class="right">
-        <label for="name">الاسم الكامل</label>
-        <input id="name" type="text" placeholder="أدخل اسمك" />
 
-        <label for="email">البريد الإلكتروني</label>
-        <input id="email" type="email" placeholder="email@example.com" />
+const resp = await fetch(WEBHOOK_URL, {
+method: 'POST',
+body: formData
+});
 
-        <label for="note">ملاحظات إضافية (اختياري)</label>
-        <textarea id="note" rows="4" placeholder="أكتب ملاحظة قصيرة..."></textarea>
 
-        <div style="margin-top:12px">
-          <div class="small">ملف الفيديو: <span id="fileInfo">لا يوجد</span></div>
-        </div>
+if(resp.ok){
+logStatus('تم الرفع بنجاح. شكرًا لك!');
+updateProgress(100);
+// optionally reset
+// reRecord();
+} else {
+console.error('Upload failed', resp.statusText);
+logStatus('فشل الرفع — حاول مرة أخرى.');
+sendBtn.disabled = false;
+}
+} catch(err){
+console.error(err);
+logStatus('خطأ أثناء الرفع — تحقق من اتصال الإنترنت وURL الخاص بالـ webhook.');
+sendBtn.disabled = false;
+}
+}
 
-        <div style="margin-top:16px">
-          <label class="small">إعدادات تسجيل</label>
-          <div class="small">دقة مبدئية: 720p (قابلة للتغيير)</div>
-        </div>
-      </div>
-    </div>
 
-    <footer>
-      <div>© تم التصميم بواسطة فريقك — يمكنك التعديل حسب حاجتك</div>
-    </footer>
-  </div>
+// -------- Attach events --------
+startBtn.addEventListener('click', () => startRecording());
+stopBtn.addEventListener('click', () => stopRecording());
+playBtn.addEventListener('click', () => playRecording());
+reRecordBtn.addEventListener('click', () => reRecord());
+sendBtn.addEventListener('click', () => sendToServer());
 
-  <script>
-    // -------- CONFIG -------------
-    // ضع هنا رابط الـ n8n webhook الخاص بك (POST endpoint) عند التشغيل
-    const WEBHOOK_URL = 'https://YOUR_N8N_WEBHOOK_URL_HERE';
 
-    // حدد إعدادات الفيديو المطلوبة
-    const VIDEO_CONSTRAINTS = { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true };
+// Initialize camera on load
+window.addEventListener('load', async () => {
+await initCamera();
+});
 
-    // -------- STATE & ELEMENTS -----
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const playBtn = document.getElementById('playBtn');
-    const reRecordBtn = document.getElementById('reRecordBtn');
-    const sendBtn = document.getElementById('sendBtn');
-    const preview = document.getElementById('preview');
-    const status = document.getElementById('status');
-    const fileInfo = document.getElementById('fileInfo');
-    const bar = document.getElementById('bar');
 
-    let mediaStream = null;
-    let mediaRecorder = null;
-    let recordedBlobs = [];
-    let recordedFile = null; // Blob
-
-    // -------- Helpers --------
-    function logStatus(text){ status.textContent = 'حالة: ' + text; }
-
-    function updateProgress(percent){ bar.style.width = percent + '%'; }
-
-    // -------- Access camera & preview -------
-    async function initCamera(){
-      try{
-        mediaStream = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
-        preview.srcObject = mediaStream;
-        preview.muted = true;
-        await preview.play();
-        logStatus('الكاميرا جاهزة. اضغط ابدأ للتسجيل.');
-      } catch(err){
-        console.error(err);
-        logStatus('فشل الوصول إلى الكاميرا/الميكروفون. تأكد من السماح بالوصول.');
-      }
-    }
-
-    // -------- Recording --------
-    function startRecording(){
-      recordedBlobs = [];
-      const options = {mimeType: 'video/webm;codecs=vp9,opus'};
-      try{
-        mediaRecorder = new MediaRecorder(mediaStream, options);
-      } catch(e){
-        console.warn('VP9 unsupported, try default.');
-        mediaRecorder = new MediaRecorder(mediaStream);
-      }
-
-      mediaRecorder.ondataavailable = (event) => {
-        if(event.data && event.data.size > 0){
-          recordedBlobs.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstart = () => { logStatus('يتم التسجيل الآن...'); updateProgress(10); };
-      mediaRecorder.onstop = () => {
-        updateProgress(80);
-        recordedFile = new Blob(recordedBlobs, {type: 'video/webm'});
-        fileInfo.textContent = (recordedFile.size/1024/1024).toFixed(2) + ' MB - webm';
-        playBtn.disabled = false;
-        reRecordBtn.disabled = false;
-        sendBtn.disabled = false;
-        logStatus('التسجيل جاهز للمعاينة أو الإرسال.');
-        updateProgress(100);
-      };
-
-      mediaRecorder.start();
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-      playBtn.disabled = true;
-      reRecordBtn.disabled = true;
-      sendBtn.disabled = true;
-    }
-
-    function stopRecording(){
-      if(mediaRecorder && mediaRecorder.state !== 'inactive'){
-        mediaRecorder.stop();
-      }
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-    }
-
-    // -------- Playback / Re-record --------
-    function playRecording(){
-      if(!recordedFile) return;
-      const url = URL.createObjectURL(recordedFile);
-      preview.srcObject = null;
-      preview.src = url;
-      preview.controls = true;
-      preview.muted = false;
-      preview.play();
-      logStatus('معاينة التسجيل');
-    }
-
-    async function reRecord(){
-      // revoke preview url if any
-      try{ if(preview.src && preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);}catch(e){}
-      recordedBlobs = [];
-      recordedFile = null;
-      fileInfo.textContent = 'لا يوجد';
-      playBtn.disabled = true;
-      reRecordBtn.disabled = true;
-      sendBtn.disabled = true;
-      preview.srcObject = mediaStream;
-      preview.controls = false;
-      await preview.play();
-      logStatus('أعد التسجيل عند الضغط ابدأ');
-    }
-
-    // -------- Upload to n8n webhook --------
-    async function sendToServer(){
-      if(!recordedFile){ alert('لا يوجد تسجيل لإرساله'); return; }
-      const name = document.getElementById('name').value || 'Anonymous';
-      const email = document.getElementById('email').value || '';
-      const note = document.getElementById('note').value || '';
-
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('note', note);
-      // attach file
-      formData.append('file', recordedFile, `response_${Date.now()}.webm`);
-
-      try{
-        sendBtn.disabled = true;
-        updateProgress(0);
-        logStatus('جاري رفع الملف...');
-
-        const resp = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          body: formData
-        });
-
-        if(resp.ok){
-          logStatus('تم الرفع بنجاح. شكرًا لك!');
-          updateProgress(100);
-          // optionally reset
-          // reRecord();
-        } else {
-          console.error('Upload failed', resp.statusText);
-          logStatus('فشل الرفع — حاول مرة أخرى.');
-          sendBtn.disabled = false;
-        }
-      } catch(err){
-        console.error(err);
-        logStatus('خطأ أثناء الرفع — تحقق من اتصال الإنترنت وURL الخاص بالـ webhook.');
-        sendBtn.disabled = false;
-      }
-    }
-
-    // -------- Attach events --------
-    startBtn.addEventListener('click', () => startRecording());
-    stopBtn.addEventListener('click', () => stopRecording());
-    playBtn.addEventListener('click', () => playRecording());
-    reRecordBtn.addEventListener('click', () => reRecord());
-    sendBtn.addEventListener('click', () => sendToServer());
-
-    // Initialize camera on load
-    window.addEventListener('load', async () => {
-      await initCamera();
-    });
-
-    // Clean up on unload
-    window.addEventListener('beforeunload', () => {
-      if(mediaStream){
-        mediaStream.getTracks().forEach(t => t.stop());
-      }
-    });
-  </script>
+// Clean up on unload
+window.addEventListener('beforeunload', () => {
+if(mediaStream){
+mediaStream.getTracks().forEach(t => t.stop());
+}
+});
+</script>
 </body>
 </html>
-
