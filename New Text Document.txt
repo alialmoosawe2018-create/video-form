@@ -1,20 +1,3 @@
-<!--
-VideoForm_Record_and_Upload.html
-Single-file HTML + CSS + JS form to record video (WebRTC) and upload to an n8n webhook.
-
-HOW TO USE:
-1. Replace the placeholder WEBHOOK_URL with your n8n webhook URL (e.g. https://<your-n8n-domain>/webhook/YourWebhookName).
-2. Drop this file into your web host (Netlify / Vercel / GitHub Pages / any static server) or include its contents in your site's page.
-3. Open the page in Chrome/Firefox/Edge (modern browsers recommended). On first load the browser will ask for camera/mic permission.
-4. Click "Start recording" -> record -> Stop -> Preview -> Send to server. The file is sent as 'video.webm' in a multipart/form-data POST.
-
-NOTES & NEXT STEPS:
-- The MediaRecorder API produces .webm in most browsers. If you need MP4, transcode server-side (ffmpeg) or use client-side libraries (bigger).
-- For production: consider direct-to-S3 signed uploads for scalability (saves your server bandwidth/storage), or stream to a backend endpoint that stores in S3.
-- For AI processing: n8n can trigger a workflow on the webhook to store the file, call Whisper for transcription, call GPT for analysis, etc.
-- Customize UI styles, question prompts, and add server-side validation as needed.
-
--->
 
 <!doctype html>
 <html lang="ar">
@@ -285,3 +268,4 @@ NOTES & NEXT STEPS:
   </script>
 </body>
 </html>
+
